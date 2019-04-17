@@ -1,0 +1,61 @@
+@import "Mixins";
+
+// --- Palette ---
+$primaryColor:   #212121;
+$primaryLight:   #484848;
+$primaryDark:    #000000;
+$primaryText:    #ffffff;
+$secondaryColor: #42a5f5; 
+$secondaryLight: #80d6ff;
+$secondaryDark:  #0077c2;
+$secondaryText:  #000000;
+
+// --- Constants ---
+$headerHeight: 5vh;
+
+html {
+    overflow-x: hidden;
+    font-family: 'Roboto', sans-serif;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: $headerHeight;
+    width: 100vw;
+    background-color: $primaryDark;
+    color: $primaryText;
+    @include box_shadow(2);
+
+    ul {
+        list-style: none;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    li {
+        float: left;
+        height: 100%;
+        width: 5%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    a {
+        text-align: center;
+        display: block;
+        padding: 2em 1em;
+        margin: auto;
+    }
+}
+
+body {
+    position: fixed;
+    top: $headerHeight;
+    height: 95vh;
+    width: 100vw;
+    color: $primaryText;
+    background-color: $primaryColor; 
+}
