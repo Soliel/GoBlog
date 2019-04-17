@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <head>
     <title>{{.PageName}}</title>
-    <link rel="stylesheet" href="..\css\site.css">
+    <link rel="stylesheet" href="\Resources\css\site.css">
     <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <script src="/Resources/js/jQuery.js"></script>
+    <script src="/Resources/js/templateAnim.js"></script>
 </head>
 <body>
-    <header>
+    <header class="navBar">
+        <div class="logo">
+            <img src="/Resources/images/LogoSmall.svg">
+        </div>
         <ul>
+            <div id="navHighlight"></div>
             <li>Home</li>
             <li>Articles</li>
             <li>About</li>

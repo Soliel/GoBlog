@@ -11,7 +11,7 @@ $secondaryDark:  #0077c2;
 $secondaryText:  #000000;
 
 // --- Constants ---
-$headerHeight: 5vh;
+$headerHeight: 7vh;
 
 html {
     overflow-x: hidden;
@@ -28,26 +28,59 @@ header {
     color: $primaryText;
     @include box_shadow(2);
 
+    .logo {
+        float: left;
+        z-index: 0;
+        height: 100%;
+        width: 20vw;
+        margin: 0;
+        background: $primaryDark;
+        position: relative;
+        overflow: hidden;
+        img {
+            position: absolute;
+            top: -9999px;
+            bottom: -9999px;
+            left: -9999px;
+            right: -9999px;
+            margin: auto;
+        }
+    }
+    #navHighlight {
+        position: absolute;
+        left: 105vw;
+        z-index: -1;
+        width: 5vw;
+        height: 100%;
+        margin: 0;
+        background: $primaryLight;
+    }
     ul {
         list-style: none;
         width: 100%;
         height: 100%;
         margin: 0;
         padding: 0;
+        z-index: -1;
     }
     li {
-        float: left;
+        float: right;
         height: 100%;
         width: 5%;
         display: flex;
         justify-content: center;
         align-items: center;
+        z-index: 1;
     }
     a {
         text-align: center;
         display: block;
         padding: 2em 1em;
         margin: auto;
+        z-index: 1;
+    }
+    li:hover{
+        cursor: pointer;
     }
 }
 
