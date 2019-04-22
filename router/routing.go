@@ -6,28 +6,28 @@ import (
 	"strings"
 )
 
-//Handle helps us reference Handler functions easier.
-type Handle func(http.ResponseWriter, *http.Request, url.Values)
+//Handler helps us reference Handler functions easier.
+type Handler func(http.ResponseWriter, *http.Request, url.Values)
 
 //Router holds our routing trie.
 type Router struct {
 	tree            *node
-	notFoundHandler Handle
+	notFoundHandler Handler
 }
 
 type node struct {
-	children     []*node
-	component    string
-	isNamedParam bool
-	methods      map[string]Handle
+	children           []*node
+	component          string
+	isNamedParam       bool
+	httpMethodHandlers map[string]Handler
 }
 
 //NewRouter creates a new router and registers a redirect URL to be used in case we can't find a path. Generally a 404 page.
-func NewRouter(notFoundHandler Handle) *Router {
+func NewRouter(notFoundHandler Handler) *Router {
 	node := node{
-		component:    "root",
-		isNamedParam: false,
-		methods:      make(map[string]Handle),
+		component:          "root",
+		isNamedParam:       false,
+		httpMethodHandlers: make(map[string]Handler),
 	}
 
 	return &Router{
@@ -36,71 +36,72 @@ func NewRouter(notFoundHandler Handle) *Router {
 	}
 }
 
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	req.ParseForm()
-	params := req.Form
+func (thisRouter *Router) ServeHTTP(httpResponseWriter http.ResponseWriter, httpRequest *http.Request) {
+	httpRequest.ParseForm()
+	params := httpRequest.Form
 
-	handleArray := strings.Split(req.URL.Path, "/")
+	handleArray := strings.Split(httpRequest.URL.Path, "/")
 
 	if handleArray[1] == "" {
-		handler := r.getHandler(r.tree, req.Method)
-		go handler(w, req, params)
+		handler := thisRouter.getHandler(thisRouter.tree, httpRequest.Method)
+		go handler(httpResponseWriter, httpRequest, params)
 	} else {
-		n, _ := r.tree.traverseTree(handleArray[1:], params)
+		n, _ := thisRouter.tree.traverseTree(handleArray[1:], params)
 
-		handler := r.getHandler(n, req.Method)
-		go handler(w, req, params)
+		handler := thisRouter.getHandler(n, httpRequest.Method)
+		go handler(httpResponseWriter, httpRequest, params)
 	}
 }
 
 //Handle registers routes into the router.
-func (r *Router) Handle(method, path string, handler Handle) {
+func (thisRouter *Router) Handle(httpMethod string, path string, handler Handler) {
 	if path[0] != '/' {
 		panic("Path must start with a /")
 	}
-	r.tree.addNode(method, path, handler)
+
+	thisRouter.tree.addNode(httpMethod, path, handler)
 }
 
-func (r *Router) getHandler(node *node, method string) Handle {
-	handler := node.methods[method]
+func (thisRouter *Router) getHandler(node *node, httpMethod string) Handler {
+	handler := node.httpMethodHandlers[httpMethod]
 	if handler != nil {
 		return handler
 	} else {
-		return r.notFoundHandler
+		return thisRouter.notFoundHandler
 	}
 }
 
-func makeNewNode(component string) *node {
+func makeDefaultNode(component string) *node {
 	return &node{
-		component:    component,
-		isNamedParam: false,
-		methods:      make(map[string]Handle),
+		component:          component,
+		isNamedParam:       false,
+		httpMethodHandlers: make(map[string]Handler),
 	}
 }
 
-func (n *node) addNode(method string, path string, handler Handle) {
-	components := strings.Split(path, "/")[1:]
-	if components[0] == "" {
-		if n.component == "root" {
-			n.methods[method] = handler
+func (thisNode *node) addNode(httpMethod string, path string, handler Handler) {
+	componentsWithoutLeadingZero := strings.Split(path, "/")[1:]
+	if componentsWithoutLeadingZero[0] == "" {
+		if thisNode.component == "root" {
+			thisNode.httpMethodHandlers[httpMethod] = handler
+			return
 		}
 	}
 
-	aNode, component := n.traverseTree(components, nil)
-	components = removePrecedingElements(component, components)
-	lastNode := aNode.addAllChildrenAndReturnFinalNode(components)
-	lastNode.methods[method] = handler
-
+	lastNodeInTree, componentAtLastNode := thisNode.traverseTree(componentsWithoutLeadingZero, nil)
+	componentsAfterLastNode := removeThisAndPrecedingElements(componentAtLastNode, componentsWithoutLeadingZero)
+	newNode := lastNodeInTree.addAllChildrenAndReturnFinalNode(componentsAfterLastNode)
+	newNode.httpMethodHandlers[httpMethod] = handler
 }
 
-func (n *node) addAllChildrenAndReturnFinalNode(components []string) *node {
+func (thisNode *node) addAllChildrenAndReturnFinalNode(components []string) *node {
 	if len(components) <= 0 {
-		return n
+		return thisNode
 	}
 
-	component := components[0]
-	newNode := makeNewNode(component)
-	if len(component) > 0 && component[0] == ':' {
+	firstComponent := components[0]
+	newNode := makeDefaultNode(firstComponent)
+	if len(firstComponent) > 0 && firstComponent[0] == ':' {
 		newNode.isNamedParam = true
 	}
 
@@ -108,15 +109,15 @@ func (n *node) addAllChildrenAndReturnFinalNode(components []string) *node {
 	return newNode.addAllChildrenAndReturnFinalNode(nextComponents)
 }
 
-func (n *node) traverseTree(components []string, params url.Values) (*node, string) {
-	component := components[0]
-	if len(n.children) <= 0 {
-		return n, component
+func (thisNode *node) traverseTree(components []string, params url.Values) (*node, string) {
+	firstComponent := components[0]
+	if len(thisNode.children) <= 0 {
+		return thisNode, firstComponent
 	}
 
-	validChild := n.getValidChildAndAddParams(component, params)
+	validChild := thisNode.getValidChildAndAddParams(firstComponent, params)
 	if validChild == nil {
-		return n, component
+		return thisNode, firstComponent
 	}
 
 	nextComponents := components[1:]
@@ -124,27 +125,15 @@ func (n *node) traverseTree(components []string, params url.Values) (*node, stri
 		return validChild.traverseTree(nextComponents, params)
 	}
 
-	return n, component
+	return validChild, firstComponent
 }
 
-func (n *node) addParamIfNamedParam(params url.Values, component string) {
-	if n.isNamedParam {
-		params.Add(n.component[1:], component)
-	}
-}
-
-func (n *node) doesMatchComponent(component string) bool {
-	if n.component == component {
-		return true
-	}
-
-	return false
-}
-
-func (n *node) getValidChildAndAddParams(component string, params url.Values) *node {
-	for _, child := range n.children {
+func (thisNode *node) getValidChildAndAddParams(component string, params url.Values) *node {
+	for _, child := range thisNode.children {
 		if child.doesMatchComponent(component) || child.isNamedParam {
-			child.addParamIfNamedParam(params, component)
+			return child
+		} else if child.isNamedParam {
+			params.Add(thisNode.component[1:], component)
 			return child
 		}
 	}
@@ -152,7 +141,15 @@ func (n *node) getValidChildAndAddParams(component string, params url.Values) *n
 	return nil
 }
 
-func removePrecedingElements(element string, array []string) []string {
+func (thisNode *node) doesMatchComponent(component string) bool {
+	if thisNode.component == component {
+		return true
+	}
+
+	return false
+}
+
+func removeThisAndPrecedingElements(element string, array []string) []string {
 	for index, value := range array {
 		if value == element {
 			return array[index+1:]

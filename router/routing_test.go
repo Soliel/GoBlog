@@ -8,12 +8,12 @@ import (
 )
 
 func TestNewRouter(t *testing.T) {
-	notFound := func(w http.ResponseWriter, r *http.Request, params url.Values) {
+	notFound := func(httpResponseWriter http.ResponseWriter, httpRequest *http.Request, params url.Values) {
 		return
 	}
 
 	type args struct {
-		notFoundHandler Handle
+		notFoundHandler Handler
 	}
 	tests := []struct {
 		name string
@@ -27,9 +27,9 @@ func TestNewRouter(t *testing.T) {
 			},
 			want: &Router{
 				tree: &node{
-					component:    "root",
-					isNamedParam: false,
-					methods:      make(map[string]Handle),
+					component:          "root",
+					isNamedParam:       false,
+					httpMethodHandlers: make(map[string]Handler),
 				},
 
 				notFoundHandler: notFound,
@@ -49,66 +49,66 @@ func TestNewRouter(t *testing.T) {
 
 func TestRouter_ServeHTTP(t *testing.T) {
 	type args struct {
-		w   http.ResponseWriter
-		req *http.Request
+		httpResponseWriter http.ResponseWriter
+		httpRequest        *http.Request
 	}
 	tests := []struct {
-		name string
-		r    *Router
-		args args
+		name       string
+		thisRouter *Router
+		args       args
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.r.ServeHTTP(tt.args.w, tt.args.req)
+			tt.thisRouter.ServeHTTP(tt.args.httpResponseWriter, tt.args.httpRequest)
 		})
 	}
 }
 
 func TestRouter_Handle(t *testing.T) {
 	type args struct {
-		method  string
-		path    string
-		handler Handle
+		httpMethod string
+		path       string
+		handler    Handler
 	}
 	tests := []struct {
-		name string
-		r    *Router
-		args args
+		name       string
+		thisRouter *Router
+		args       args
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Handle(tt.args.method, tt.args.path, tt.args.handler)
+			tt.thisRouter.Handle(tt.args.httpMethod, tt.args.path, tt.args.handler)
 		})
 	}
 }
 
 func TestRouter_getHandler(t *testing.T) {
 	type args struct {
-		node   *node
-		method string
+		node       *node
+		httpMethod string
 	}
 	tests := []struct {
-		name string
-		r    *Router
-		args args
-		want Handle
+		name       string
+		thisRouter *Router
+		args       args
+		want       Handler
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.getHandler(tt.args.node, tt.args.method); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.thisRouter.getHandler(tt.args.node, tt.args.httpMethod); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Router.getHandler() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_makeNewNode(t *testing.T) {
+func Test_makeDefaultNode(t *testing.T) {
 	type args struct {
 		component string
 	}
@@ -121,8 +121,8 @@ func Test_makeNewNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := makeNewNode(tt.args.component); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("makeNewNode() = %v, want %v", got, tt.want)
+			if got := makeDefaultNode(tt.args.component); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("makeDefaultNode() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -130,20 +130,20 @@ func Test_makeNewNode(t *testing.T) {
 
 func Test_node_addNode(t *testing.T) {
 	type args struct {
-		method  string
-		path    string
-		handler Handle
+		httpMethod string
+		path       string
+		handler    Handler
 	}
 	tests := []struct {
-		name string
-		n    *node
-		args args
+		name     string
+		thisNode *node
+		args     args
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.n.addNode(tt.args.method, tt.args.path, tt.args.handler)
+			tt.thisNode.addNode(tt.args.httpMethod, tt.args.path, tt.args.handler)
 		})
 	}
 }
@@ -153,16 +153,16 @@ func Test_node_addAllChildrenAndReturnFinalNode(t *testing.T) {
 		components []string
 	}
 	tests := []struct {
-		name string
-		n    *node
-		args args
-		want *node
+		name     string
+		thisNode *node
+		args     args
+		want     *node
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.n.addAllChildrenAndReturnFinalNode(tt.args.components); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.thisNode.addAllChildrenAndReturnFinalNode(tt.args.components); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("node.addAllChildrenAndReturnFinalNode() = %v, want %v", got, tt.want)
 			}
 		})
@@ -175,62 +175,22 @@ func Test_node_traverseTree(t *testing.T) {
 		params     url.Values
 	}
 	tests := []struct {
-		name  string
-		n     *node
-		args  args
-		want  *node
-		want1 string
+		name     string
+		thisNode *node
+		args     args
+		want     *node
+		want1    string
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.n.traverseTree(tt.args.components, tt.args.params)
+			got, got1 := tt.thisNode.traverseTree(tt.args.components, tt.args.params)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("node.traverseTree() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
 				t.Errorf("node.traverseTree() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
-
-func Test_node_addParamIfNamedParam(t *testing.T) {
-	type args struct {
-		params    url.Values
-		component string
-	}
-	tests := []struct {
-		name string
-		n    *node
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.n.addParamIfNamedParam(tt.args.params, tt.args.component)
-		})
-	}
-}
-
-func Test_node_doesMatchComponent(t *testing.T) {
-	type args struct {
-		component string
-	}
-	tests := []struct {
-		name string
-		n    *node
-		args args
-		want bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.n.doesMatchComponent(tt.args.component); got != tt.want {
-				t.Errorf("node.doesMatchComponent() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -242,23 +202,44 @@ func Test_node_getValidChildAndAddParams(t *testing.T) {
 		params    url.Values
 	}
 	tests := []struct {
-		name string
-		n    *node
-		args args
-		want *node
+		name     string
+		thisNode *node
+		args     args
+		want     *node
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.n.getValidChildAndAddParams(tt.args.component, tt.args.params); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.thisNode.getValidChildAndAddParams(tt.args.component, tt.args.params); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("node.getValidChildAndAddParams() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_removePrecedingElements(t *testing.T) {
+func Test_node_doesMatchComponent(t *testing.T) {
+	type args struct {
+		component string
+	}
+	tests := []struct {
+		name     string
+		thisNode *node
+		args     args
+		want     bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.thisNode.doesMatchComponent(tt.args.component); got != tt.want {
+				t.Errorf("node.doesMatchComponent() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_removeThisAndPrecedingElements(t *testing.T) {
 	type args struct {
 		element string
 		array   []string
@@ -272,8 +253,8 @@ func Test_removePrecedingElements(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := removePrecedingElements(tt.args.element, tt.args.array); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("removePrecedingElements() = %v, want %v", got, tt.want)
+			if got := removeThisAndPrecedingElements(tt.args.element, tt.args.array); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("removeThisAndPrecedingElements() = %v, want %v", got, tt.want)
 			}
 		})
 	}
