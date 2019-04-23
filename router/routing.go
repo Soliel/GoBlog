@@ -44,12 +44,12 @@ func (thisRouter *Router) ServeHTTP(httpResponseWriter http.ResponseWriter, http
 
 	if handleArray[1] == "" {
 		handler := thisRouter.getHandler(thisRouter.tree, httpRequest.Method)
-		go handler(httpResponseWriter, httpRequest, params)
+		handler(httpResponseWriter, httpRequest, params)
 	} else {
 		n, _ := thisRouter.tree.traverseTree(handleArray[1:], params)
 
 		handler := thisRouter.getHandler(n, httpRequest.Method)
-		go handler(httpResponseWriter, httpRequest, params)
+		handler(httpResponseWriter, httpRequest, params)
 	}
 }
 
@@ -66,9 +66,9 @@ func (thisRouter *Router) getHandler(node *node, httpMethod string) Handler {
 	handler := node.httpMethodHandlers[httpMethod]
 	if handler != nil {
 		return handler
-	} else {
-		return thisRouter.notFoundHandler
 	}
+
+	return thisRouter.notFoundHandler
 }
 
 func makeDefaultNode(component string) *node {
@@ -89,7 +89,7 @@ func (thisNode *node) addNode(httpMethod string, path string, handler Handler) {
 	}
 
 	lastNodeInTree, componentAtLastNode := thisNode.traverseTree(componentsWithoutLeadingZero, nil)
-	componentsAfterLastNode := removeThisAndPrecedingElements(componentAtLastNode, componentsWithoutLeadingZero)
+	componentsAfterLastNode := removePrecedingElements(componentAtLastNode, componentsWithoutLeadingZero)
 	newNode := lastNodeInTree.addAllChildrenAndReturnFinalNode(componentsAfterLastNode)
 	newNode.httpMethodHandlers[httpMethod] = handler
 }
@@ -149,10 +149,10 @@ func (thisNode *node) doesMatchComponent(component string) bool {
 	return false
 }
 
-func removeThisAndPrecedingElements(element string, array []string) []string {
+func removePrecedingElements(element string, array []string) []string {
 	for index, value := range array {
 		if value == element {
-			return array[index+1:]
+			return array[index:]
 		}
 	}
 
