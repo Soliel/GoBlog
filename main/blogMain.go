@@ -15,10 +15,11 @@ import (
 func main() {
 	router := router.NewRouter(handle404)
 
-	router.Handle(http.MethodGet, "/", handleRoot)
+	router.Handle(http.MethodGet, "/", false, handleRoot)
+	router.Handle(http.MethodGet, "/users/:user", false, handleUserEndpoint)
 
 	fs := http.FileServer(http.Dir("../Resources/"))
-	router.Handle(http.MethodGet, "/Resources/", func(httpWriter http.ResponseWriter, request *http.Request, params url.Values) {
+	router.Handle(http.MethodGet, "/Resources/", true, func(httpWriter http.ResponseWriter, request *http.Request, params url.Values) {
 		http.StripPrefix("/Resources/", fs).ServeHTTP(httpWriter, request)
 	})
 
@@ -41,4 +42,8 @@ func handleRoot(w http.ResponseWriter, r *http.Request, params url.Values) {
 func handle404(httpWriter http.ResponseWriter, httpRequest *http.Request, params url.Values) {
 
 	fmt.Fprint(httpWriter, "<H6>404 Page Not Found</H6>")
+}
+
+func handleUserEndpoint(httpWriter http.ResponseWriter, httpRequest *http.Request, params url.Values) {
+	fmt.Fprintf(httpWriter, "%v lives here.", params.Get("user"))
 }

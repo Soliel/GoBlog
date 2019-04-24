@@ -208,7 +208,7 @@ func TestRouter_Handle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.thisRouter.Handle(tt.args.httpMethod, tt.args.path, tt.args.handler)
+			tt.thisRouter.Handle(tt.args.httpMethod, tt.args.path, false, tt.args.handler)
 
 			splitPath := strings.Split(tt.args.path, "/")[1:]
 			node, _ := tt.thisRouter.tree.traverseTree(splitPath, nil)
@@ -297,7 +297,7 @@ func Test_node_addNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.thisNode.addNode(tt.args.httpMethod, tt.args.path, tt.args.handler)
+			tt.thisNode.addNode(tt.args.httpMethod, tt.args.path, false, tt.args.handler)
 		})
 	}
 }

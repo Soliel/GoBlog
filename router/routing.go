@@ -19,6 +19,7 @@ type node struct {
 	children           []*node
 	component          string
 	isNamedParam       bool
+	isExternalHandler  bool
 	httpMethodHandlers map[string]Handler
 }
 
@@ -27,6 +28,7 @@ func NewRouter(notFoundHandler Handler) *Router {
 	node := node{
 		component:          "root",
 		isNamedParam:       false,
+		isExternalHandler:  false,
 		httpMethodHandlers: make(map[string]Handler),
 	}
 
@@ -46,6 +48,11 @@ func (thisRouter *Router) ServeHTTP(httpResponseWriter http.ResponseWriter, http
 		handler := thisRouter.getHandler(thisRouter.tree, httpRequest.Method)
 		handler(httpResponseWriter, httpRequest, params)
 	} else {
+		handleArrLen := len(handleArray)
+		if handleArray[handleArrLen-1] == "" {
+			handleArray = handleArray[:handleArrLen-1]
+		}
+
 		n, _ := thisRouter.tree.traverseTree(handleArray[1:], params)
 
 		handler := thisRouter.getHandler(n, httpRequest.Method)
@@ -54,12 +61,12 @@ func (thisRouter *Router) ServeHTTP(httpResponseWriter http.ResponseWriter, http
 }
 
 //Handle registers routes into the router.
-func (thisRouter *Router) Handle(httpMethod string, path string, handler Handler) {
+func (thisRouter *Router) Handle(httpMethod string, path string, isExternalHandler bool, handler Handler) {
 	if path[0] != '/' {
 		panic("Path must start with a /")
 	}
 
-	thisRouter.tree.addNode(httpMethod, path, handler)
+	thisRouter.tree.addNode(httpMethod, path, isExternalHandler, handler)
 }
 
 func (thisRouter *Router) getHandler(node *node, httpMethod string) Handler {
@@ -79,7 +86,7 @@ func makeDefaultNode(component string) *node {
 	}
 }
 
-func (thisNode *node) addNode(httpMethod string, path string, handler Handler) {
+func (thisNode *node) addNode(httpMethod string, path string, isExternalHandler bool, handler Handler) {
 	componentsWithoutLeadingZero := strings.Split(path, "/")[1:]
 	if componentsWithoutLeadingZero[0] == "" {
 		if thisNode.component == "root" {
@@ -88,10 +95,20 @@ func (thisNode *node) addNode(httpMethod string, path string, handler Handler) {
 		}
 	}
 
+	componentsLen := len(componentsWithoutLeadingZero)
+	if componentsWithoutLeadingZero[componentsLen-1] == "" {
+		componentsWithoutLeadingZero = componentsWithoutLeadingZero[:componentsLen-1]
+	}
+
 	lastNodeInTree, componentAtLastNode := thisNode.traverseTree(componentsWithoutLeadingZero, nil)
 	componentsAfterLastNode := removePrecedingElements(componentAtLastNode, componentsWithoutLeadingZero)
 	newNode := lastNodeInTree.addAllChildrenAndReturnFinalNode(componentsAfterLastNode)
+
 	newNode.httpMethodHandlers[httpMethod] = handler
+
+	if isExternalHandler {
+		newNode.isExternalHandler = true
+	}
 }
 
 func (thisNode *node) addAllChildrenAndReturnFinalNode(components []string) *node {
@@ -106,6 +123,7 @@ func (thisNode *node) addAllChildrenAndReturnFinalNode(components []string) *nod
 	}
 
 	nextComponents := components[1:]
+	thisNode.children = append(thisNode.children, newNode)
 	return newNode.addAllChildrenAndReturnFinalNode(nextComponents)
 }
 
@@ -118,6 +136,8 @@ func (thisNode *node) traverseTree(components []string, params url.Values) (*nod
 	validChild := thisNode.getValidChildAndAddParams(firstComponent, params)
 	if validChild == nil {
 		return thisNode, firstComponent
+	} else if validChild.isExternalHandler {
+		return validChild, firstComponent
 	}
 
 	nextComponents := components[1:]
@@ -130,10 +150,10 @@ func (thisNode *node) traverseTree(components []string, params url.Values) (*nod
 
 func (thisNode *node) getValidChildAndAddParams(component string, params url.Values) *node {
 	for _, child := range thisNode.children {
-		if child.doesMatchComponent(component) || child.isNamedParam {
+		if child.doesMatchComponent(component) {
 			return child
-		} else if child.isNamedParam {
-			params.Add(thisNode.component[1:], component)
+		} else if child.isNamedParam && params != nil {
+			params.Add(child.component[1:], component)
 			return child
 		}
 	}
