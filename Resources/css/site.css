@@ -73,6 +73,7 @@ body {
   top: 7vh;
   height: 95vh;
   width: 100vw;
+  margin: 0;
   color: #ffffff;
   background-color: #212121;
 }

@@ -45,5 +45,5 @@ func handle404(httpWriter http.ResponseWriter, httpRequest *http.Request, params
 }
 
 func handleUserEndpoint(httpWriter http.ResponseWriter, httpRequest *http.Request, params url.Values) {
-	fmt.Fprintf(httpWriter, "%v lives here.", params.Get("user"))
+	fmt.Fprintf(httpWriter, "<html><h1>%v lives here.</h1></html>", params.Get("user"))
 }
